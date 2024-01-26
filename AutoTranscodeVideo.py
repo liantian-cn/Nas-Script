@@ -19,7 +19,7 @@ def get_file_list(path):
     list: 按照修改时间排序的文件列表
     """
     files = [p.resolve() for p in pathlib.Path(path).glob("**/*") if p.suffix in {".mp4", ".mov", ".mkv", ".avi"}]
-    return sorted(files, key=lambda file: file.stat().st_mtime)
+    return sorted(files, key=lambda file: file.stat().st_mtime,reverse=True)
     # return sorted(files, key=lambda file: file.stat().st_size)
 
 
@@ -102,31 +102,36 @@ def compare_float(a, b) -> bool:
 
 def process_video_file(src: pathlib.Path):
     src_m, src_v, src_a = get_video_file_info(src)
-    if src_v['codec_name'] == 'hevc':
-        dst = pathlib.Path('F:\\output\\').joinpath(src.name)
-        if not dst.exists():
-            src.rename(dst)
-    else:
-        transcode = True
-        dst = pathlib.Path('F:\\output\\').joinpath(f'{src.stem}.mkv')
-        if dst.exists():
-            try:
-                dst_m, dst_v, dis_a = get_video_file_info(
-                    dst)  # 调用 get_video_file_info(dst) 函数获取目标文件的信息，并将返回的结果分别赋值给变量 dst_m、dst_v 和 dis_a
-                if not compare_float(src_m['duration'], dst_m['duration']):  # 如果目标文件的时长与源文件的时长不相等
-                    print(f'Error: {dst.__str__()} duration is not equal to {src.__str__()}')  # 打印错误信息
-                    print(f'{src_m["duration"]} vs {dst_m["duration"]}')
-                    print(f'Deleting {dst.__str__()}')  # 打印删除目标文件的信息
-                    send2trash(dst)
-                else:  # 如果目标文件的时长与源文件的时长相等
-                    src.rename(pathlib.Path("F:\\trash").joinpath(src.name))  # 将源文件重命名为垃圾文件
-                    transcode = False  # 设置转码标记为 False
-            except (KeyError, Exception):  # 如果发生异常（ EITHER KeyError OR Exception ）
-                print(f'Error: {dst.__str__()} is not a valid video file')  # 打印错误信息
+    transcode = False
+    # if src_v['codec_name'] == 'hevc':
+    #     dst = pathlib.Path('F:\\output\\').joinpath(src.name)
+    #     if not dst.exists():
+    #         src.rename(dst)
+    # else:
+
+    dst = pathlib.Path('F:\\output\\').joinpath(f'{src.stem}.mkv')
+    if dst.exists():
+        try:
+            dst_m, dst_v, dis_a = get_video_file_info(
+                dst)  # 调用 get_video_file_info(dst) 函数获取目标文件的信息，并将返回的结果分别赋值给变量 dst_m、dst_v 和 dis_a
+            if not compare_float(src_m['duration'], dst_m['duration']):  # 如果目标文件的时长与源文件的时长不相等
+                print(f'Error: {dst.__str__()} duration is not equal to {src.__str__()}')  # 打印错误信息
+                print(f'{src_m["duration"]} vs {dst_m["duration"]}')
                 print(f'Deleting {dst.__str__()}')  # 打印删除目标文件的信息
                 send2trash(dst)
-        if transcode:  # 如果需要转码
-            return transcode_video(src, dst)
+                transcode = True
+            else:  # 如果目标文件的时长与源文件的时长相等
+                print(f'Transcoding Success: {dst.__str__()}')
+                src.rename(pathlib.Path("F:\\trash").joinpath(src.name))  # 将源文件重命名为垃圾文件
+        except (KeyError, Exception):  # 如果发生异常（ EITHER KeyError OR Exception ）
+            print(f'Error: {dst.__str__()} is not a valid video file')  # 打印错误信息
+            print(f'Deleting {dst.__str__()}')  # 打印删除目标文件的信息
+            send2trash(dst)
+            transcode = True
+    else:
+        transcode = True
+    if transcode:  # 如果需要转码
+        return transcode_video(src, dst)
     return False
 
 
